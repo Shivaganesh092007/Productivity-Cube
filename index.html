@@ -3,14 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productivity Cube</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Productivity Cube | Mint Dashboard</title>
+    <style>
+        /* CSS Variables for Mint Green Fresh Palette */
+        :root {
+            --mint-primary: #e8f5e9; /* Light Mint Background */
+            --mint-accent: #a5d6a7;  /* Soft Mint Cards */
+            --mint-dark: #2e7d32;    /* Deep Forest Text */
+            --white: #ffffff;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--mint-primary);
+            color: var(--mint-dark);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+            background-color: var(--white);
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 3rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Card implementation [cite: 118, 121] */
+        .card {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            border: 1px solid var(--mint-accent);
+        }
+
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #81c784; /* Connected Mint */
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            color: var(--mint-dark);
+        }
+
+        .cube-graphic {
+            width: 100px;
+            height: 100px;
+            background-color: var(--mint-accent);
+            margin: 20px auto;
+            border: 3px solid var(--mint-dark);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        button {
+            background-color: var(--mint-dark);
+            color: var(--white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #1b5e20;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Productivity Cube Project!</h1>
-    <p>Team, let's build an awesome website.</p>
 
-    <style src="style.css"></style>
-    <script src="script.js"></script>
+    <header>
+        <h1>PRODUCTIVITY CUBE</h1>
+        <p><span class="status-dot"></span> Cube Connected via BLE</p>
+    </header>
+
+    <main class="dashboard-container">
+        <section class="card">
+            <h3>Current Orientation</h3>
+            <div class="cube-graphic" id="cubeSide">FACE 1</div>
+            <p><strong>Active Task:</strong> Deep Work</p>
+        </section>
+
+        <section class="card">
+            <h3>Session Timer</h3>
+            <div class="timer-display">25:00</div>
+            <p>Focusing on: <em>Project Report</em></p>
+        </section>
+
+        <section class="card">
+            <h3>Quick Actions</h3>
+            <button onclick="alert('Navigating to Analytics...')">View Patterns</button>
+            <div style="margin-top: 15px;">
+                <button style="background:none; color:var(--mint-dark); border: 1px solid var(--mint-dark);">
+                    Face Settings
+                </button>
+            </div>
+        </section>
+    </main>
+
 </body>
 </html>
