@@ -34,6 +34,7 @@ let faceSeconds = [0, 0, 0, 0, 0, 0];
 let liveInterval = null;
 let liveSeconds = 0;
 
+// --- UTILITIES ---
 function formatTime(s) {
   const h   = Math.floor(s / 3600);
   const m   = Math.floor((s % 3600) / 60);
@@ -59,6 +60,7 @@ function updateFaceDisplay(faceNum) {
   applyTheme(faceNum - 1);
 }
 
+// --- TIMER LOGIC ---
 function startLiveTimer(faceNum) {
   stopLiveTimer();
   liveSeconds = faceSeconds[faceNum - 1];
@@ -81,6 +83,7 @@ function buildStatsCard() {
   statsCard.innerHTML = '<h3>Stats</h3><div id="stats-container"></div>';
 }
 
+// --- SERIAL COMMUNICATION ---
 function parseArduinoLine(line) {
   line = line.trim();
   const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
@@ -102,7 +105,6 @@ function parseArduinoLine(line) {
 async function connectSerial() {
   try {
     setConnectionUI('connecting');
-    // REMOVED FILTER: Browser will now show all available COM ports
     port = await navigator.serial.requestPort(); 
     await port.open({ baudRate: 115200 });
 
@@ -151,37 +153,26 @@ function setConnectionUI(state) {
   }
 }
 
-connectbtn.addEventListener('click', async () => {
-  if (connectbtn.dataset.state === 'connected') {
-    stopLiveTimer();
-    if (reader) await reader.cancel();
-    if (port) await port.close();
-    setConnectionUI('disconnected');
-  } else {
-    await connectSerial();
-  }
-});
+// --- SETTINGS & VALIDATION LOGIC ---
+const validateTaskInputs = () => {
+    let allfilled = true;
+    taskinputs.forEach(input => {
+        if (input.value.trim() === '') {
+            allfilled = false;
+        }
+    });
+    savetasksbtn.disabled = !allfilled;
+};
 
-// Settings validation: Disable save if any task name is empty
-function validateTaskInputs() {
-  let isAnyEmpty = false;
-  taskinputs.forEach(input => {
-    if (input.value.trim() === "") {
-      isAnyEmpty = true;
-    }
-  });
-  savetasksbtn.disabled = isAnyEmpty;
-}
-
-// Attach validation to input events
+// Listen for typing in task fields
 taskinputs.forEach(input => {
-  input.addEventListener('input', validateTaskInputs);
+    input.addEventListener('input', validateTaskInputs);
 });
 
 opensettingsbtn.addEventListener('click', () => {
   sidebar.classList.add('open');
   overlay.classList.add('show');
-  validateTaskInputs(); // Check on open
+  validateTaskInputs(); // Run check immediately when opening
 });
 
 const closeSidebar = () => {
@@ -194,8 +185,20 @@ overlay.addEventListener('click', closeSidebar);
 
 savetasksbtn.addEventListener('click', () => {
   updateFaceDisplay(activeFace);
-  showToast('Tasks saved ✓');
+  showToast('Tasks saved successfully! ✓');
   closeSidebar();
+});
+
+// --- UI EVENT LISTENERS ---
+connectbtn.addEventListener('click', async () => {
+  if (connectbtn.dataset.state === 'connected') {
+    stopLiveTimer();
+    if (reader) await reader.cancel();
+    if (port) await port.close();
+    setConnectionUI('disconnected');
+  } else {
+    await connectSerial();
+  }
 });
 
 faceselector.addEventListener('input', (e) => {
@@ -228,7 +231,7 @@ function showToast(msg) {
   setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
-// Initialization
+// --- INITIALIZATION ---
 updateFaceDisplay(activeFace);
 buildStatsCard();
 timerdisplay.textContent = '00:00';
