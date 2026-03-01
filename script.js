@@ -75,7 +75,6 @@ function stopLiveTimer() {
   if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
 }
 
-// Stats kept empty as requested
 function buildStatsCard() {
   const statsCard = document.querySelector('.cards:last-child');
   if (!statsCard) return;
@@ -103,7 +102,8 @@ function parseArduinoLine(line) {
 async function connectSerial() {
   try {
     setConnectionUI('connecting');
-    port = await navigator.serial.requestPort();
+    // REMOVED FILTER: Browser will now show all available COM ports
+    port = await navigator.serial.requestPort(); 
     await port.open({ baudRate: 115200 });
 
     setConnectionUI('connected');
@@ -162,10 +162,26 @@ connectbtn.addEventListener('click', async () => {
   }
 });
 
-// Settings interactions
+// Settings validation: Disable save if any task name is empty
+function validateTaskInputs() {
+  let isAnyEmpty = false;
+  taskinputs.forEach(input => {
+    if (input.value.trim() === "") {
+      isAnyEmpty = true;
+    }
+  });
+  savetasksbtn.disabled = isAnyEmpty;
+}
+
+// Attach validation to input events
+taskinputs.forEach(input => {
+  input.addEventListener('input', validateTaskInputs);
+});
+
 opensettingsbtn.addEventListener('click', () => {
   sidebar.classList.add('open');
   overlay.classList.add('show');
+  validateTaskInputs(); // Check on open
 });
 
 const closeSidebar = () => {
@@ -182,10 +198,9 @@ savetasksbtn.addEventListener('click', () => {
   closeSidebar();
 });
 
-// Fixed Face Selector logic: No auto-timer start, supports backspace
 faceselector.addEventListener('input', (e) => {
   const val = faceselector.value;
-  if (val === "") return; // Allow backspacing without jumping to 6
+  if (val === "") return; 
   
   let num = parseInt(val);
   if (num > 6) {
@@ -198,7 +213,6 @@ faceselector.addEventListener('input', (e) => {
   
   activeFace = num;
   updateFaceDisplay(num);
-  // Timer does NOT start here manually anymore
 });
 
 function showToast(msg) {
