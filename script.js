@@ -185,6 +185,11 @@ savetasksbtn.addEventListener('click', () => {
 });
 
 connectbtn.addEventListener('click', async () => {
+  if (!("serial" in navigator)) {
+    showToast('Web Serial API is not supported in this browser. Try Chrome or Edge.');
+    return;
+  }
+
   if (connectbtn.dataset.state === 'connected') {
     stopLiveTimer();
     if (reader) await reader.cancel();
@@ -225,23 +230,7 @@ function showToast(msg) {
   setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
-connectbtn.addEventListener('click', async () => {
-  if (!("serial" in navigator)) {
-    showToast('Web Serial API is not supported in this browser. Please use Chrome or Edge.');
-    return;
-  }
-
-  if (connectbtn.dataset.state === 'connected') {
-    stopLiveTimer();
-    if (reader) await reader.cancel();
-    if (port) await port.close();
-    setConnectionUI('disconnected');
-  } 
-  else {
-    await connectSerial();
-  }
-});
-
 updateFaceDisplay(activeFace);
 buildStatsCard();
 timerdisplay.textContent = '00:00';
+
