@@ -73,7 +73,8 @@ function start_live_timer(face_num) {
 
 function stop_live_timer() {
     if(live_interval) { 
-        clearInterval(live_interval); live_interval = null; 
+        clearInterval(live_interval); 
+        live_interval = null; 
     }
 }
 
@@ -86,11 +87,26 @@ function build_stats_card() {
 }
 
 function parse_string(line) {
+    if(!line) {
+        return;
+    }
+
     line = line.trim();
+
+    if(line === "") {
+        console.log("Empty string received. Waiting...");
+        return;
+    }
+    
     const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
     if(match) {
         const face = parseInt(match[1]);
         const seconds = parseInt(match[2]);
+
+        if(seconds > Number.MAX_SAFE_INTEGER) {
+            console.log("Integer overflow warning"); 
+            seconds = Number.MAX_SAFE_INTEGER; 
+        }
 
         if(face !== last_face) {
             last_face = face;
@@ -237,7 +253,9 @@ function show_toast(msg) {
     if(!el) {
         el = document.createElement('div');
         el.id = 'cube-toast';
-        el.style.cssText = `position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:9999; transition:opacity 0.4s; pointer-events:none;`;
+        el.style.cssText = `position:fixed; bottom:24px; left:50%; transform:translateX(-50%); 
+        background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; 
+        font-size:14px; z-index:9999; transition:opacity 0.4s; pointer-events:none;`;
         document.body.appendChild(el);
     }
     el.textContent = msg;
