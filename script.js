@@ -1,7 +1,3 @@
-// ============================================================
-//  PRODUCTIVITY CUBE — app.js (Serial Version)
-// ============================================================
-
 const connectbtn        = document.getElementById('connectbtn');
 const opensettingsbtn   = document.getElementById('opensettings');
 const closesettingsbtn  = document.getElementById('closesettings');
@@ -34,7 +30,6 @@ let faceSeconds = [0, 0, 0, 0, 0, 0];
 let liveInterval = null;
 let liveSeconds = 0;
 
-// --- UTILITIES ---
 function formatTime(s) {
   const h   = Math.floor(s / 3600);
   const m   = Math.floor((s % 3600) / 60);
@@ -60,7 +55,6 @@ function updateFaceDisplay(faceNum) {
   applyTheme(faceNum - 1);
 }
 
-// --- TIMER LOGIC ---
 function startLiveTimer(faceNum) {
   stopLiveTimer();
   liveSeconds = faceSeconds[faceNum - 1];
@@ -83,7 +77,6 @@ function buildStatsCard() {
   statsCard.innerHTML = '<h3>Stats</h3><div id="stats-container"></div>';
 }
 
-// --- SERIAL COMMUNICATION ---
 function parseArduinoLine(line) {
   line = line.trim();
   const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
@@ -109,7 +102,7 @@ async function connectSerial() {
     await port.open({ baudRate: 115200 });
 
     setConnectionUI('connected');
-    showToast('Connected ✓');
+    showToast('Connected!');
 
     const decoder = new TextDecoderStream();
     port.readable.pipeTo(decoder.writable);
@@ -153,7 +146,6 @@ function setConnectionUI(state) {
   }
 }
 
-// --- SETTINGS & VALIDATION LOGIC ---
 const validateTaskInputs = () => {
     let allfilled = true;
     taskinputs.forEach(input => {
@@ -164,7 +156,6 @@ const validateTaskInputs = () => {
     savetasksbtn.disabled = !allfilled;
 };
 
-// Listen for typing in task fields
 taskinputs.forEach(input => {
     input.addEventListener('input', validateTaskInputs);
 });
@@ -172,7 +163,7 @@ taskinputs.forEach(input => {
 opensettingsbtn.addEventListener('click', () => {
   sidebar.classList.add('open');
   overlay.classList.add('show');
-  validateTaskInputs(); // Run check immediately when opening
+  validateTaskInputs(); 
 });
 
 const closeSidebar = () => {
@@ -185,11 +176,10 @@ overlay.addEventListener('click', closeSidebar);
 
 savetasksbtn.addEventListener('click', () => {
   updateFaceDisplay(activeFace);
-  showToast('Tasks saved successfully! ✓');
+  showToast('Tasks saved successfully!');
   closeSidebar();
 });
 
-// --- UI EVENT LISTENERS ---
 connectbtn.addEventListener('click', async () => {
   if (connectbtn.dataset.state === 'connected') {
     stopLiveTimer();
@@ -231,7 +221,6 @@ function showToast(msg) {
   setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
-// --- INITIALIZATION ---
 updateFaceDisplay(activeFace);
 buildStatsCard();
 timerdisplay.textContent = '00:00';
