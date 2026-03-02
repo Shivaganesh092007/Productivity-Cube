@@ -1,3 +1,7 @@
+// ================================================
+// Productivity Cube - Design Thinking Project
+// ================================================
+
 const connectbtn        = document.getElementById('connectbtn');
 const opensettingsbtn   = document.getElementById('opensettings');
 const closesettingsbtn  = document.getElementById('closesettings');
@@ -220,6 +224,23 @@ function showToast(msg) {
   el.style.opacity = '1';
   setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
+
+connectbtn.addEventListener('click', async () => {
+  if (!("serial" in navigator)) {
+    showToast('Web Serial API is not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+
+  if (connectbtn.dataset.state === 'connected') {
+    stopLiveTimer();
+    if (reader) await reader.cancel();
+    if (port) await port.close();
+    setConnectionUI('disconnected');
+  } 
+  else {
+    await connectSerial();
+  }
+});
 
 updateFaceDisplay(activeFace);
 buildStatsCard();
