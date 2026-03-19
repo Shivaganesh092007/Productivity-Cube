@@ -1,7 +1,3 @@
-// ================================================
-// Productivity Cube - Design Thinking Project
-// ================================================
-
 const connect_btn = document.getElementById('connectbtn');
 const open_settings_btn = document.getElementById('opensettings');
 const close_settings_btn = document.getElementById('closesettings');
@@ -15,6 +11,7 @@ const cube_side = document.getElementById('cubeside');
 const status_dot = document.getElementById('statusdot');
 const status_text = document.getElementById('statustext');
 const timer_display = document.querySelector('.timerdisplay');
+const view_stats_btn = document.getElementById('viewstatsbtn');
 
 const face_themes = [
     { bg: '#e8f5e9', text: '#2e7d32', border: '#a5d6a7', dot: '#81c784', hover: '#1b5e20', disabled: '#c8e6c9' },
@@ -40,6 +37,14 @@ function format_time(s) {
     const sec = s % 60;
     const pad = n => String(n).padStart(2, '0');
     return h > 0 ? `${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+
+function format_center_time(s) {
+    if (s === 0) return "0 mins";
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0) return `${h} hr, ${m} mins`;
+    return `${m} mins`;
 }
 
 function apply_theme(face_index) {
@@ -78,14 +83,6 @@ function stop_live_timer() {
     }
 }
 
-function build_stats_card() {
-    const stats_card = document.querySelector('.cards:last-child');
-    if(!stats_card) {
-        return;
-    }
-    stats_card.innerHTML = '<h3>Stats</h3><div id="stats-container"></div>';
-}
-
 function parse_string(line) {
     if(!line) {
         return;
@@ -101,7 +98,7 @@ function parse_string(line) {
     const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
     if(match) {
         const face = parseInt(match[1]);
-        const seconds = parseInt(match[2]);
+        let seconds = parseInt(match[2]);
 
         if(seconds > Number.MAX_SAFE_INTEGER) {
             console.log("Integer overflow warning"); 
@@ -149,7 +146,6 @@ async function connect_serial() {
             }
         }
     } 
-    
     catch(e) {
         set_connection_ui('disconnected');
         show_toast('Error: ' + e.message);
@@ -263,6 +259,137 @@ function show_toast(msg) {
     setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
+if (view_stats_btn) {
+    view_stats_btn.addEventListener('click', () => {
+        const total_time = face_seconds.reduce((a, b) => a + b, 0);
+        let gradient_str = '';
+        let legend_html = '';
+        let current_deg = 0;
+
+        if (total_time > 0) {
+            for (let i = 0; i < 6; i++) {
+                const percentage = (face_seconds[i] / total_time) * 360;
+                if (percentage > 0) {
+                    const next_deg = current_deg + percentage;
+                    gradient_str += `${face_themes[i].text} ${current_deg}deg ${next_deg}deg, `;
+                    current_deg = next_deg;
+                    
+                    legend_html += `
+                    <div class="legend-item">
+                        <div class="color-box" style="background-color: ${face_themes[i].text};"></div>
+                        <span class="task-name">${task_inputs[i].value}</span>
+                        <span class="task-time">${format_time(face_seconds[i])}</span>
+                    </div>`;
+                }
+            }
+            gradient_str = gradient_str.slice(0, -2);
+        } else {
+            gradient_str = '#e0e0e0 0deg 360deg';
+            legend_html = '<p style="text-align: center; color: #777;">No data recorded yet.</p>';
+        }
+
+        const stats_html = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Cube Activity Stats</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background-color: #fdfdfd;
+                    color: #333;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                }
+                .chart-container {
+                    position: relative;
+                    width: 320px;
+                    height: 320px;
+                    border-radius: 50%;
+                    background: conic-gradient(${gradient_str});
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 50px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                }
+                .chart-inner {
+                    width: 280px;
+                    height: 280px;
+                    background-color: #fdfdfd;
+                    border-radius: 50%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .chart-inner .today {
+                    font-size: 14px;
+                    color: #666;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                    margin-bottom: 5px;
+                }
+                .chart-inner .time {
+                    font-size: 42px;
+                    color: #222;
+                    text-align: center;
+                }
+                .legend-container {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                    width: 320px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 15px;
+                }
+                .legend-item {
+                    display: flex;
+                    align-items: center;
+                    font-size: 16px;
+                }
+                .color-box {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 4px;
+                    margin-right: 12px;
+                }
+                .task-name {
+                    flex-grow: 1;
+                    font-weight: 500;
+                }
+                .task-time {
+                    color: #666;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="chart-container">
+                <div class="chart-inner">
+                    <div class="today">TODAY</div>
+                    <div class="time">${format_center_time(total_time)}</div>
+                </div>
+            </div>
+            <div class="legend-container">
+                ${legend_html}
+            </div>
+        </body>
+        </html>
+        `;
+
+        const statsWindow = window.open('', '_blank');
+        statsWindow.document.write(stats_html);
+        statsWindow.document.close();
+    });
+}
+
 update_face_display(active_face);
-build_stats_card();
 timer_display.textContent = '00:00';
