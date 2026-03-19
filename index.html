@@ -8,6 +8,7 @@
         * {
             box-sizing: border-box;
         }
+
         :root {
             --bg-color: #e8f5e9;
             --text-color: #2e7d32;
@@ -16,9 +17,11 @@
             --hover-color: #1b5e20;
             --disabled-bg: #c8e6c9;
         }
+
         body, .cards, .cubegraphic, button, input, .sidebar {
             transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
         }
+
         body{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
@@ -38,6 +41,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
             position: relative;
         }
+
         .header-actions {
             position: absolute;
             right: 32px;
@@ -45,6 +49,7 @@
             display: flex;
             gap: 12px;
         }
+
         .dashboardcontainer{
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -53,6 +58,7 @@
             max-width: 1200px;
             width: 100%;
         }
+
         .cards{
             background: white;
             padding: 32px;
@@ -61,6 +67,7 @@
             text-align: center;
             border: 1px solid var(--border-color);
         }
+
         .statusdot{
             height: 12px;
             width: 12px;
@@ -70,23 +77,27 @@
             margin-right: 8px;
             transition: background-color 0.3s ease;
         }
+        
         .statusdot.connected {
             background-color: var(--dot-color);
             animation-name: blink;
             animation-duration: 1s;
             animation-iteration-count: infinite;
         }
+        
         @keyframes blink{
             0%{ opacity: 1; }
             50%{ opacity: 0; }
             100%{ opacity: 1; }
         }
+        
         .timerdisplay{
             font-size: 64px;
             font-weight: bold;
             margin: 16px 0;
             color: var(--text-color);
         }
+
         .cubegraphic{
             width: 100px;
             height: 100px;
@@ -99,6 +110,7 @@
             justify-content: center;
             font-weight: bold;
         }
+
         button{
             background-color: var(--text-color);
             color: white;
@@ -108,15 +120,18 @@
             cursor: pointer;
             font-weight: bold;
         }
+
         button:hover{
             background-color: var(--hover-color);
         }
+
         button:disabled {
             background-color: var(--disabled-bg);
             cursor: not-allowed;
             color: var(--text-color);
             opacity: 0.7;
         }
+
         .sidebar {
             position: fixed;
             top: 0;
@@ -133,9 +148,11 @@
             flex-direction: column;
             overflow-y: auto;
         }
+
         .sidebar.open {
             right: 0;
         }
+
         .overlay {
             position: fixed;
             top: 0;
@@ -146,6 +163,7 @@
             display: none;
             z-index: 999;
         }
+
         .overlay.show {
             display: block;
         }
@@ -154,12 +172,14 @@
             margin-bottom: 16px;
             text-align: left;
         }
+
         .inputgroup label {
             display: block;
             margin-bottom: 8px;
             font-size: 14px;
             font-weight: bold;
         }
+
         .inputgroup input {
             width: 100%;
             padding: 10px;
@@ -168,10 +188,12 @@
             font-family: inherit;
             color: var(--text-color);
         }
+
         .inputgroup input:focus {
             outline: none;
             border-color: var(--text-color);
         }
+
         .closebtn {
             background: transparent;
             color: var(--text-color);
@@ -182,11 +204,13 @@
         .closebtn:hover {
             background: var(--bg-color);
         }
+
         .face-selector-container {
             margin-bottom: 16px;
             font-size: 14px;
             font-weight: bold;
         }
+        
         .face-selector-input {
             width: 50px;
             padding: 5px;
@@ -200,24 +224,28 @@
             outline: none;
             border-color: var(--text-color);
         }
+
         @media (max-width: 800px) {
             .dashboardcontainer {
                 grid-template-columns: 1fr; 
                 padding: 24px; 
                 gap: 24px;
             }
+
             header {
                 padding: 24px 16px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
             }
+
             .header-actions {
                 position: static; 
                 margin-top: 16px; 
                 display: flex;
                 justify-content: center;
             }
+
             .timerdisplay {
                 font-size: 48px; 
             }
@@ -228,6 +256,7 @@
     <header>
         <h1>PRODUCTIVITY CUBE</h1>
         <p><span id="statusdot" class="statusdot"></span> <span id="statustext">Cube disconnected</span></p>
+        
         <div class="header-actions">
             <button id="connectbtn">Connect Cube</button>
             <button id="opensettings">Settings</button>
@@ -253,7 +282,7 @@
 
         <div class="cards">
             <h3>Stats</h3>
-            <button style="margin-top: 50px;">View Stats</button>
+            <button style="margin-top: 50px;" id="viewstatsbtn">View Stats</button>
         </div>
     </div>
     
@@ -291,6 +320,6 @@
         <button id="closesettings" class="closebtn">Cancel</button>
     </div>
     
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
