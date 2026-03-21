@@ -42,8 +42,8 @@ const face_themes = [
     { bg: '#e0f2f1', text: '#00695c', border: '#80cbc4', dot: '#4db6ac', hover: '#004d40', disabled: '#b2dfdb' },
 ];
 
-let serial_port = null;
-let serial_reader = null;
+let ble_device = null;
+let ble_characteristic = null;
 let receive_buffer = '';
 let active_face = 1;
 let last_face = -1;
@@ -152,7 +152,6 @@ function update_daily_total_card() {
         el.innerHTML = `<span class="stat-num">${s}<span class="stat-unit">s</span></span>`;
     }
 
-    // also update top task
     const top_el = document.getElementById('toptaskstat');
     if (top_el) {
         let max_i = 0;
@@ -165,7 +164,7 @@ function update_daily_total_card() {
 // --- Timer ---
 function start_live_timer(face_num) {
     stop_live_timer();
-    limit_warning.classList.remove('show'); // clear warning on face switch
+    limit_warning.classList.remove('show'); 
     live_seconds = face_seconds[face_num - 1];
     timer_display.textContent = format_time(live_seconds);
     live_interval = setInterval(() => {
@@ -175,7 +174,6 @@ function start_live_timer(face_num) {
         update_daily_total_card();
         save_today();
 
-        // Check activity limit for this face
         const limit_val = parseInt(limit_inputs[face_num - 1]?.value) || 0;
         if (limit_val > 0 && live_seconds >= limit_val * 60) {
             limit_warning.classList.add('show');
@@ -196,11 +194,7 @@ function render_chart() {
     const total_seconds = face_seconds.reduce((a, b) => a + b, 0);
     const hrs = Math.floor(total_seconds / 3600);
     const mins = Math.floor((total_seconds % 3600) / 60);
-    if (hrs > 0) {
-        total_time_display.textContent = `${hrs} hr, ${mins} mins`;
-    } else {
-        total_time_display.textContent = `${mins} mins`;
-    }
+    total_time_display.textContent = hrs > 0 ? `${hrs} hr, ${mins} mins` : `${mins} mins`;
 
     let gradient_string = '';
     let current_pct = 0;
@@ -222,20 +216,12 @@ function render_chart() {
             current_pct = end;
 
             const task_name = task_inputs[index].value || `Face ${index + 1}`;
-            const th = Math.floor(sec / 3600);
-            const tm = Math.floor((sec % 3600) / 60);
-            const ts = sec % 60;
-            let time_str = '';
-            if (th > 0) time_str += `${th}h `;
-            if (tm > 0 || th > 0) time_str += `${tm}m `;
-            time_str += `${ts}s`;
-
             legend_container.innerHTML += `
                 <div class="legend-item">
                     <div class="legend-color" style="background-color: ${color};"></div>
                     <div>
                         <div style="color: #333;">${task_name}</div>
-                        <div style="font-size: 13px; color: #888; font-weight: normal;">${time_str}</div>
+                        <div style="font-size: 13px; color: #888; font-weight: normal;">${format_time_short(sec)}</div>
                     </div>
                 </div>`;
         }
@@ -262,7 +248,7 @@ function render_weekly_chart() {
         return { key, total, entry };
     });
 
-    if (max_seconds === 0) max_seconds = 3600; // default scale 1hr if no data
+    if (max_seconds === 0) max_seconds = 3600; 
 
     day_totals.forEach(({ key, total, entry }) => {
         const d = new Date(key + 'T00:00:00');
@@ -271,7 +257,6 @@ function render_weekly_chart() {
         const height_pct = Math.max((total / max_seconds) * 100, total > 0 ? 4 : 0);
         const is_today = key === TODAY_KEY;
 
-        // build task breakdown tooltip
         let tooltip_html = `<strong>${day_name}, ${date_str}</strong><br>Total: ${format_time_short(total)}`;
         if (entry && total > 0) {
             entry.face_seconds.forEach((sec, i) => {
@@ -303,61 +288,39 @@ function render_weekly_chart() {
 async function fetch_ai_summary() {
     const weekly_data = load_weekly();
     const days_keys = get_last_7_days();
-
-    // Build a text summary of the week to send to Claude
-    let stats_text = 'Here is the user\'s productivity data for the past 7 days:\n\n';
+    let stats_text = 'Past 7 days productivity:\n';
     let has_data = false;
 
     days_keys.forEach(key => {
         const entry = weekly_data[key];
-        const d = new Date(key + 'T00:00:00');
-        const day_labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const day_str = `${day_labels[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
-
         if (entry) {
             has_data = true;
-            const total = entry.face_seconds.reduce((a, b) => a + b, 0);
-            stats_text += `${day_str}: Total ${format_time_short(total)}\n`;
-            entry.face_seconds.forEach((sec, i) => {
-                if (sec > 0) {
-                    const task = entry.tasks?.[i] || `Face ${i + 1}`;
-                    stats_text += `  - ${task}: ${format_time_short(sec)}\n`;
-                }
-            });
-        } else {
-            stats_text += `${day_str}: No data recorded\n`;
+            stats_text += `${key}: Total ${format_time_short(entry.face_seconds.reduce((a, b) => a + b, 0))}\n`;
         }
     });
 
     if (!has_data) {
-        ai_summary_text.innerHTML = '<em>No weekly data yet. Use the cube for a few days and come back for insights!</em>';
+        ai_summary_text.innerHTML = '<em>No weekly data yet.</em>';
         ai_summary_box.style.display = 'block';
         return;
     }
 
-    ai_summary_text.innerHTML = '<em>⏳ Analysing your week...</em>';
+    ai_summary_text.innerHTML = '<em>⏳ Analysing...</em>';
     ai_summary_box.style.display = 'block';
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': 'YOUR_KEY_HERE' },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 1000,
-                messages: [{
-                    role: 'user',
-                    content: `${stats_text}\nGive a short, friendly summary (3–4 sentences) of this person's week. Point out their strongest day, which task took most time, and give 2 concrete suggestions to improve their time management next week. Keep it encouraging and practical. Plain text only, no markdown.`
-                }]
+                model: 'claude-3-5-sonnet-20240620',
+                max_tokens: 200,
+                messages: [{ role: 'user', content: stats_text + "\nSummarize my week briefly." }]
             })
         });
-
         const data = await response.json();
-        const reply = data.content?.find(b => b.type === 'text')?.text || 'Could not generate summary.';
-        ai_summary_text.textContent = reply;
-    } catch(e) {
-        ai_summary_text.textContent = 'Could not reach AI. Check your connection and try again.';
-    }
+        ai_summary_text.textContent = data.content[0].text;
+    } catch(e) { ai_summary_text.textContent = 'Summary unavailable.'; }
 }
 
 // --- View Switching ---
@@ -385,19 +348,13 @@ back_from_weekly_btn.addEventListener('click', () => {
     ai_summary_box.style.display = 'none';
 });
 
-// --- Serial Parsing (Single String Logic) ---
+// --- Bluetooth Parsing Logic ---
 function parse_string(line) {
     if (!line) return;
-    line = line.trim();
-    if (line === '') return;
-
-    // Pattern for "Side 1 | Time: 120s"
-    const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
+    const match = line.trim().match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
     if (match) {
         const face = parseInt(match[1]);
-        let seconds = parseInt(match[2]);
-        if (seconds > Number.MAX_SAFE_INTEGER) seconds = Number.MAX_SAFE_INTEGER;
-
+        const seconds = parseInt(match[2]);
         if (face !== last_face) {
             last_face = face;
             active_face = face;
@@ -405,38 +362,38 @@ function parse_string(line) {
             face_selector.value = face;
             update_face_display(face);
             start_live_timer(face);
-        } else {
-            // Keep internal data updated if same face is active
-            face_seconds[face - 1] = seconds;
         }
     }
 }
 
-async function connect_serial() {
+// --- Web Bluetooth Connection ---
+async function connect_bluetooth() {
     try {
         set_connection_ui('connecting');
-        serial_port = await navigator.serial.requestPort();
-        await serial_port.open({ baudRate: 115200 });
-        set_connection_ui('connected');
-        show_toast('Connected!');
+        ble_device = await navigator.bluetooth.requestDevice({
+            filters: [{ name: 'Productivity Cube' }], // Match your ESP32 BLE name
+            optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'] // Nordic UART Service UUID
+        });
 
-        const decoder = new TextDecoderStream();
-        serial_port.readable.pipeTo(decoder.writable);
-        serial_reader = decoder.readable.getReader();
+        const server = await ble_device.gatt.connect();
+        const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
+        ble_characteristic = await service.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e'); // TX Characteristic
 
-        while (true) {
-            const { value, done } = await serial_reader.read();
-            if (done) break;
-            if (value) {
-                receive_buffer += value;
-                let nl;
-                while ((nl = receive_buffer.indexOf('\n')) !== -1) {
-                    const line = receive_buffer.slice(0, nl);
-                    receive_buffer = receive_buffer.slice(nl + 1);
-                    parse_string(line);
-                }
+        await ble_characteristic.startNotifications();
+        ble_characteristic.addEventListener('characteristicvaluechanged', (event) => {
+            const value = new TextDecoder().decode(event.target.value);
+            receive_buffer += value;
+            let nl;
+            while ((nl = receive_buffer.indexOf('\n')) !== -1) {
+                parse_string(receive_buffer.slice(0, nl));
+                receive_buffer = receive_buffer.slice(nl + 1);
             }
-        }
+        });
+
+        set_connection_ui('connected');
+        show_toast('Connected via Bluetooth!');
+        ble_device.addEventListener('gattserverdisconnected', () => set_connection_ui('disconnected'));
+
     } catch(e) {
         set_connection_ui('disconnected');
         show_toast('Error: ' + e.message);
@@ -449,7 +406,6 @@ function set_connection_ui(state) {
         status_text.textContent = 'Cube connected';
         connect_btn.textContent = 'Disconnect';
         connect_btn.dataset.state = 'connected';
-        connect_btn.disabled = false;
     } else if (state === 'connecting') {
         status_text.textContent = 'Connecting...';
         connect_btn.disabled = true;
@@ -464,9 +420,7 @@ function set_connection_ui(state) {
 
 const validate_task_inputs = () => {
     let all_filled = true;
-    task_inputs.forEach(input => {
-        if (input.value.trim() === '') all_filled = false;
-    });
+    task_inputs.forEach(input => { if (input.value.trim() === '') all_filled = false; });
     save_tasks_btn.disabled = !all_filled;
 };
 
@@ -488,47 +442,34 @@ over_lay.addEventListener('click', close_sidebar);
 
 save_tasks_btn.addEventListener('click', () => {
     update_face_display(active_face);
-    show_toast('Tasks saved successfully!');
+    show_toast('Tasks saved!');
     close_sidebar();
     save_today();
 });
 
 connect_btn.addEventListener('click', async () => {
-    if (!('serial' in navigator)) {
-        show_toast('Web Serial API not supported. Try Chrome or Edge.');
-        return;
-    }
     if (connect_btn.dataset.state === 'connected') {
         stop_live_timer();
-        if (serial_reader) await serial_reader.cancel();
-        if (serial_port) await serial_port.close();
+        if (ble_device) await ble_device.gatt.disconnect();
         set_connection_ui('disconnected');
     } else {
-        await connect_serial();
+        await connect_bluetooth();
     }
 });
 
 face_selector.addEventListener('input', () => {
-    const val = face_selector.value;
-    if (val === '') return;
-    let num = parseInt(val);
-    if (num > 6) { num = 6; face_selector.value = 6; }
-    else if (num < 1) { num = 1; face_selector.value = 1; }
+    let num = parseInt(face_selector.value);
+    if (num > 6) num = 6; else if (num < 1) num = 1;
+    face_selector.value = num;
     active_face = num;
-    limit_warning.classList.remove('show');
     update_face_display(num);
 });
 
 function show_toast(msg) {
-    let el = document.getElementById('cube-toast');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'cube-toast';
-        el.style.cssText = `position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-        background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px;
-        font-size:14px; z-index:9999; transition:opacity 0.4s; pointer-events:none;`;
-        document.body.appendChild(el);
-    }
+    let el = document.getElementById('cube-toast') || document.createElement('div');
+    el.id = 'cube-toast';
+    el.style.cssText = `position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:9999; transition:opacity 0.4s;`;
+    if (!el.parentElement) document.body.appendChild(el);
     el.textContent = msg;
     el.style.opacity = '1';
     setTimeout(() => { el.style.opacity = '0'; }, 2500);
