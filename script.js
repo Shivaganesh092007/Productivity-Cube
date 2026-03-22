@@ -42,8 +42,8 @@ const face_themes = [
     { bg: '#e0f2f1', text: '#00695c', border: '#80cbc4', dot: '#4db6ac', hover: '#004d40', disabled: '#b2dfdb' },
 ];
 
-let ble_device = null;
-let ble_characteristic = null;
+let serial_port = null;
+let serial_reader = null;
 let receive_buffer = '';
 let active_face = 1;
 let last_face = -1;
@@ -311,9 +311,12 @@ async function fetch_ai_summary() {
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-API-Key': 'YOUR_KEY_HERE' },
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
             body: JSON.stringify({
-                model: 'claude-3-5-sonnet-20240620',
+                model: 'claude-sonnet-4-20250514',
                 max_tokens: 200,
                 messages: [{ role: 'user', content: stats_text + "\nSummarize my week briefly." }]
             })
@@ -348,13 +351,27 @@ back_from_weekly_btn.addEventListener('click', () => {
     ai_summary_box.style.display = 'none';
 });
 
-// --- Bluetooth Parsing Logic ---
+// --- Serial Parsing Logic ---
 function parse_string(line) {
     if (!line) return;
-    const match = line.trim().match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
+
+    line = line.trim();
+
+    if (line === "") {
+        console.log("Empty string received. Waiting...");
+        return;
+    }
+
+    const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
     if (match) {
         const face = parseInt(match[1]);
-        const seconds = parseInt(match[2]);
+        let seconds = parseInt(match[2]);
+
+        if (seconds > Number.MAX_SAFE_INTEGER) {
+            console.log("Integer overflow warning");
+            seconds = Number.MAX_SAFE_INTEGER;
+        }
+
         if (face !== last_face) {
             last_face = face;
             active_face = face;
@@ -366,34 +383,34 @@ function parse_string(line) {
     }
 }
 
-// --- Web Bluetooth Connection ---
-async function connect_bluetooth() {
+// --- Web Serial Connection ---
+async function connect_serial() {
     try {
         set_connection_ui('connecting');
-        ble_device = await navigator.bluetooth.requestDevice({
-            filters: [{ name: 'Productivity Cube' }], // Match your ESP32 BLE name
-            optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'] // Nordic UART Service UUID
-        });
-
-        const server = await ble_device.gatt.connect();
-        const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
-        ble_characteristic = await service.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e'); // TX Characteristic
-
-        await ble_characteristic.startNotifications();
-        ble_characteristic.addEventListener('characteristicvaluechanged', (event) => {
-            const value = new TextDecoder().decode(event.target.value);
-            receive_buffer += value;
-            let nl;
-            while ((nl = receive_buffer.indexOf('\n')) !== -1) {
-                parse_string(receive_buffer.slice(0, nl));
-                receive_buffer = receive_buffer.slice(nl + 1);
-            }
-        });
+        serial_port = await navigator.serial.requestPort();
+        await serial_port.open({ baudRate: 115200 });
 
         set_connection_ui('connected');
-        show_toast('Connected via Bluetooth!');
-        ble_device.addEventListener('gattserverdisconnected', () => set_connection_ui('disconnected'));
+        show_toast('Connected!');
 
+        const decoder = new TextDecoderStream();
+        serial_port.readable.pipeTo(decoder.writable);
+        serial_reader = decoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await serial_reader.read();
+            if (done) break;
+
+            if (value) {
+                receive_buffer += value;
+                let nl;
+                while ((nl = receive_buffer.indexOf('\n')) !== -1) {
+                    const line = receive_buffer.slice(0, nl);
+                    receive_buffer = receive_buffer.slice(nl + 1);
+                    parse_string(line);
+                }
+            }
+        }
     } catch(e) {
         set_connection_ui('disconnected');
         show_toast('Error: ' + e.message);
@@ -448,12 +465,18 @@ save_tasks_btn.addEventListener('click', () => {
 });
 
 connect_btn.addEventListener('click', async () => {
+    if (!("serial" in navigator)) {
+        show_toast('Web Serial API is not supported in this browser. Try Chrome or Edge.');
+        return;
+    }
+
     if (connect_btn.dataset.state === 'connected') {
         stop_live_timer();
-        if (ble_device) await ble_device.gatt.disconnect();
+        if (serial_reader) await serial_reader.cancel();
+        if (serial_port) await serial_port.close();
         set_connection_ui('disconnected');
     } else {
-        await connect_bluetooth();
+        await connect_serial();
     }
 });
 
