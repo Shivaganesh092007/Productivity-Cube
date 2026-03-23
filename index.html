@@ -91,10 +91,22 @@
             filter: drop-shadow(0 0 4px var(--dot-color));
         }
 
-        /* Neon: AI badge */
+        /* Neon: insights badge */
         body.dark .ai-badge {
             box-shadow: 0 0 8px -1px var(--dot-color);
         }
+
+        /* Reset button — danger style */
+        .reset-btn {
+            background-color: #c62828;
+            color: white;
+        }
+        .reset-btn:hover { background-color: #8e0000; }
+        body.dark .reset-btn {
+            background-color: #7f0000;
+            box-shadow: 0 0 10px -2px #ef5350;
+        }
+        body.dark .reset-btn:hover { background-color: #4e0000; }
 
         /* Neon: donut chart outer ring glow */
         body.dark .donut-chart {
@@ -556,6 +568,7 @@
         <p><span id="statusdot" class="statusdot"></span> <span id="statustext">Cube disconnected</span></p>
         <div class="header-actions">
             <button id="connectbtn">Connect Cube</button>
+            <button id="resetbtn" class="reset-btn" title="Wipe all hardware flash memory">Reset Hardware</button>
             <button id="opensettings">Settings</button>
         </div>
     </header>
@@ -626,7 +639,7 @@
 
         <div id="aisummarybox" class="ai-summary-box">
             <div class="ai-summary-header">
-                <span class="ai-badge">AI INSIGHTS</span>
+                <span class="ai-badge">KEY INSIGHTS</span>
             </div>
             <div id="aisummarytext">Loading...</div>
         </div>
