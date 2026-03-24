@@ -3,34 +3,35 @@
 // ================================================
 
 const connect_btn = document.getElementById('connectbtn');
-const open_settings_btn = document.getElementById('opensettings');
+const reset_btn   = document.getElementById('resetbtn');
+const open_settings_btn  = document.getElementById('opensettings');
 const close_settings_btn = document.getElementById('closesettings');
-const side_bar = document.getElementById('sidebar');
-const over_lay = document.getElementById('overlay');
+const side_bar   = document.getElementById('sidebar');
+const over_lay   = document.getElementById('overlay');
 const save_tasks_btn = document.getElementById('savetasksbtn');
-const task_inputs = document.querySelectorAll('.taskinput');
-const limit_inputs = document.querySelectorAll('.limitinput');
-const limit_warning = document.getElementById('limitwarning');
+const task_inputs    = document.querySelectorAll('.taskinput');
+const limit_inputs   = document.querySelectorAll('.limitinput');
+const limit_warning  = document.getElementById('limitwarning');
 const active_task_display = document.getElementById('activetaskdisplay');
-const face_selector = document.getElementById('faceselector');
-const cube_side = document.getElementById('cubeside');
-const status_dot = document.getElementById('statusdot');
-const status_text = document.getElementById('statustext');
-const timer_display = document.querySelector('.timerdisplay');
+const face_selector  = document.getElementById('faceselector');
+const cube_side      = document.getElementById('cubeside');
+const status_dot     = document.getElementById('statusdot');
+const status_text    = document.getElementById('statustext');
+const timer_display  = document.querySelector('.timerdisplay');
 const dark_toggle_btn = document.getElementById('darktogglebtn');
 
-const view_stats_btn = document.getElementById('viewstatsbtn');
-const back_btn = document.getElementById('backbtn');
-const main_view = document.getElementById('mainview');
-const stats_view = document.getElementById('statsview');
-const donut_chart = document.getElementById('donutchart');
+const view_stats_btn     = document.getElementById('viewstatsbtn');
+const back_btn           = document.getElementById('backbtn');
+const main_view          = document.getElementById('mainview');
+const stats_view         = document.getElementById('statsview');
+const donut_chart        = document.getElementById('donutchart');
 const total_time_display = document.getElementById('total-time-display');
-const legend_container = document.getElementById('legend-container');
+const legend_container   = document.getElementById('legend-container');
 
-const weekly_view = document.getElementById('weeklyview');
-const view_detailed_btn = document.getElementById('viewdetailedbtn');
+const weekly_view          = document.getElementById('weeklyview');
+const view_detailed_btn    = document.getElementById('viewdetailedbtn');
 const back_from_weekly_btn = document.getElementById('backfromweeklybtn');
-const ai_summary_box = document.getElementById('aisummarybox');
+const ai_summary_box  = document.getElementById('aisummarybox');
 const ai_summary_text = document.getElementById('aisummarytext');
 
 const face_themes = [
@@ -42,35 +43,79 @@ const face_themes = [
     { bg: '#e0f2f1', text: '#00695c', border: '#80cbc4', dot: '#4db6ac', hover: '#004d40', disabled: '#b2dfdb' },
 ];
 
-let serial_port = null;
+let serial_port   = null;
 let serial_reader = null;
+let serial_writer = null;
 let receive_buffer = '';
-let active_face = 1;
-let last_face = -1;
-let face_seconds = [0, 0, 0, 0, 0, 0];
+let active_face   = 1;
+let last_face     = -1;
+let face_seconds  = [0, 0, 0, 0, 0, 0];
 let live_interval = null;
-let live_seconds = 0;
-let is_dark = false;
+let live_seconds  = 0;
+let is_dark       = false;
 
-// --- Weekly Storage ---
-const TODAY_KEY = new Date().toISOString().slice(0, 10);
+// ================================================
+// localStorage Keys
+// ================================================
+const TODAY_KEY  = new Date().toISOString().slice(0, 10);
+const LS_WEEKLY  = 'pc_weekly';
+const LS_TASKS   = 'pc_tasks';
+const LS_LIMITS  = 'pc_limits';
+const LS_DARK    = 'pc_dark';
+
+// ================================================
+// Persistence — Save & Load
+// ================================================
 
 function save_today() {
     try {
-        const weekly = JSON.parse(localStorage.getItem('pc_weekly') || '{}');
+        const weekly = JSON.parse(localStorage.getItem(LS_WEEKLY) || '{}');
         weekly[TODAY_KEY] = {
             face_seconds: [...face_seconds],
             tasks: Array.from(task_inputs).map(i => i.value)
         };
-        localStorage.setItem('pc_weekly', JSON.stringify(weekly));
+        localStorage.setItem(LS_WEEKLY, JSON.stringify(weekly));
     } catch(e) {}
 }
 
 function load_weekly() {
     try {
-        return JSON.parse(localStorage.getItem('pc_weekly') || '{}');
+        return JSON.parse(localStorage.getItem(LS_WEEKLY) || '{}');
     } catch(e) { return {}; }
 }
+
+function save_tasks_and_limits() {
+    const tasks  = Array.from(task_inputs).map(i => i.value);
+    const limits = Array.from(limit_inputs).map(i => i.value);
+    localStorage.setItem(LS_TASKS,  JSON.stringify(tasks));
+    localStorage.setItem(LS_LIMITS, JSON.stringify(limits));
+}
+
+function load_tasks_and_limits() {
+    try {
+        const tasks  = JSON.parse(localStorage.getItem(LS_TASKS)  || '[]');
+        const limits = JSON.parse(localStorage.getItem(LS_LIMITS) || '[]');
+        task_inputs.forEach((inp, i)  => { if (tasks[i]  !== undefined && tasks[i]  !== '') inp.value = tasks[i]; });
+        limit_inputs.forEach((inp, i) => { if (limits[i] !== undefined) inp.value = limits[i]; });
+    } catch(e) {}
+}
+
+function load_today_from_storage() {
+    try {
+        const weekly = load_weekly();
+        const entry  = weekly[TODAY_KEY];
+        if (entry && Array.isArray(entry.face_seconds)) {
+            face_seconds = entry.face_seconds.map(s => Number(s) || 0);
+        }
+    } catch(e) {}
+}
+
+function save_dark_pref(val) { localStorage.setItem(LS_DARK, val ? '1' : '0'); }
+function load_dark_pref()    { return localStorage.getItem(LS_DARK) === '1'; }
+
+// ================================================
+// Utilities
+// ================================================
 
 function get_last_7_days() {
     const days = [];
@@ -82,7 +127,6 @@ function get_last_7_days() {
     return days;
 }
 
-// --- Formatting ---
 function format_time(s) {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -98,17 +142,19 @@ function format_time_short(s) {
     return `${m}m`;
 }
 
-// --- Dark Mode ---
+// ================================================
+// Dark Mode
+// ================================================
+
 dark_toggle_btn.addEventListener('click', () => {
     is_dark = !is_dark;
     document.body.classList.toggle('dark', is_dark);
     dark_toggle_btn.textContent = is_dark ? '☀️' : '🌙';
     apply_theme(active_face - 1);
+    save_dark_pref(is_dark);
 });
 
-// --- Theme ---
 function apply_theme(face_index) {
-    const light_themes = face_themes;
     const dark_themes = [
         { bg: '#0f1f10', text: '#a5d6a7', border: '#2d5a2e', dot: '#66bb6a', hover: '#c8e6c9', disabled: '#1a3a1b' },
         { bg: '#0a1628', text: '#90caf9', border: '#1a3a5c', dot: '#42a5f5', hover: '#bbdefb', disabled: '#112244' },
@@ -117,18 +163,20 @@ function apply_theme(face_index) {
         { bg: '#2a0a0a', text: '#ef9a9a', border: '#5c1a1a', dot: '#ef5350', hover: '#ffcdd2', disabled: '#3d1212' },
         { bg: '#001a18', text: '#80cbc4', border: '#003d38', dot: '#26a69a', hover: '#b2dfdb', disabled: '#002a26' },
     ];
-
-    const t = is_dark ? dark_themes[face_index] : light_themes[face_index];
+    const t = is_dark ? dark_themes[face_index] : face_themes[face_index];
     const r = document.documentElement;
-    r.style.setProperty('--bg-color', t.bg);
-    r.style.setProperty('--text-color', t.text);
+    r.style.setProperty('--bg-color',     t.bg);
+    r.style.setProperty('--text-color',   t.text);
     r.style.setProperty('--border-color', t.border);
-    r.style.setProperty('--dot-color', t.dot);
-    r.style.setProperty('--hover-color', t.hover);
-    r.style.setProperty('--disabled-bg', t.disabled);
+    r.style.setProperty('--dot-color',    t.dot);
+    r.style.setProperty('--hover-color',  t.hover);
+    r.style.setProperty('--disabled-bg',  t.disabled);
 }
 
-// --- Face Display ---
+// ================================================
+// Face Display
+// ================================================
+
 function update_face_display(face_num) {
     cube_side.textContent = `FACE ${face_num}`;
     active_task_display.textContent = task_inputs[face_num - 1]?.value || `Face ${face_num}`;
@@ -136,7 +184,10 @@ function update_face_display(face_num) {
     update_daily_total_card();
 }
 
-// --- Daily Total Card ---
+// ================================================
+// Daily Total Card
+// ================================================
+
 function update_daily_total_card() {
     const total = face_seconds.reduce((a, b) => a + b, 0);
     const el = document.getElementById('dailytotalstat');
@@ -151,7 +202,6 @@ function update_daily_total_card() {
     } else {
         el.innerHTML = `<span class="stat-num">${s}<span class="stat-unit">s</span></span>`;
     }
-
     const top_el = document.getElementById('toptaskstat');
     if (top_el) {
         let max_i = 0;
@@ -161,10 +211,13 @@ function update_daily_total_card() {
     }
 }
 
-// --- Timer ---
+// ================================================
+// Timer
+// ================================================
+
 function start_live_timer(face_num) {
     stop_live_timer();
-    limit_warning.classList.remove('show'); 
+    limit_warning.classList.remove('show');
     live_seconds = face_seconds[face_num - 1];
     timer_display.textContent = format_time(live_seconds);
     live_interval = setInterval(() => {
@@ -173,7 +226,6 @@ function start_live_timer(face_num) {
         timer_display.textContent = format_time(live_seconds);
         update_daily_total_card();
         save_today();
-
         const limit_val = parseInt(limit_inputs[face_num - 1]?.value) || 0;
         if (limit_val > 0 && live_seconds >= limit_val * 60) {
             limit_warning.classList.add('show');
@@ -183,16 +235,16 @@ function start_live_timer(face_num) {
 }
 
 function stop_live_timer() {
-    if (live_interval) {
-        clearInterval(live_interval);
-        live_interval = null;
-    }
+    if (live_interval) { clearInterval(live_interval); live_interval = null; }
 }
 
-// --- Daily Donut Chart ---
+// ================================================
+// Daily Donut Chart
+// ================================================
+
 function render_chart() {
     const total_seconds = face_seconds.reduce((a, b) => a + b, 0);
-    const hrs = Math.floor(total_seconds / 3600);
+    const hrs  = Math.floor(total_seconds / 3600);
     const mins = Math.floor((total_seconds % 3600) / 60);
     total_time_display.textContent = hrs > 0 ? `${hrs} hr, ${mins} mins` : `${mins} mins`;
 
@@ -208,13 +260,12 @@ function render_chart() {
 
     face_seconds.forEach((sec, index) => {
         if (sec > 0) {
-            const pct = (sec / total_seconds) * 100;
+            const pct   = (sec / total_seconds) * 100;
             const start = current_pct;
-            const end = current_pct + pct;
+            const end   = current_pct + pct;
             const color = face_themes[index].dot;
             gradient_string += `${color} ${start}% ${end}%, `;
             current_pct = end;
-
             const task_name = task_inputs[index].value || `Face ${index + 1}`;
             legend_container.innerHTML += `
                 <div class="legend-item">
@@ -226,17 +277,18 @@ function render_chart() {
                 </div>`;
         }
     });
-
     gradient_string = gradient_string.slice(0, -2);
     donut_chart.style.background = `conic-gradient(${gradient_string})`;
 }
 
-// --- Weekly Bar Chart ---
+// ================================================
+// Weekly Bar Chart
+// ================================================
+
 function render_weekly_chart() {
     const weekly_data = load_weekly();
-    const days_keys = get_last_7_days();
-    const day_labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
+    const days_keys   = get_last_7_days();
+    const day_labels  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const bars_container = document.getElementById('weeklybars');
     bars_container.innerHTML = '';
 
@@ -247,15 +299,14 @@ function render_weekly_chart() {
         if (total > max_seconds) max_seconds = total;
         return { key, total, entry };
     });
-
-    if (max_seconds === 0) max_seconds = 3600; 
+    if (max_seconds === 0) max_seconds = 3600;
 
     day_totals.forEach(({ key, total, entry }) => {
-        const d = new Date(key + 'T00:00:00');
-        const day_name = day_labels[d.getDay()];
-        const date_str = `${d.getDate()}/${d.getMonth() + 1}`;
+        const d          = new Date(key + 'T00:00:00');
+        const day_name   = day_labels[d.getDay()];
+        const date_str   = `${d.getDate()}/${d.getMonth() + 1}`;
         const height_pct = Math.max((total / max_seconds) * 100, total > 0 ? 4 : 0);
-        const is_today = key === TODAY_KEY;
+        const is_today   = key === TODAY_KEY;
 
         let tooltip_html = `<strong>${day_name}, ${date_str}</strong><br>Total: ${format_time_short(total)}`;
         if (entry && total > 0) {
@@ -266,9 +317,7 @@ function render_weekly_chart() {
                 }
             });
         }
-
         const bar_color = is_today ? 'var(--text-color)' : 'var(--border-color)';
-
         bars_container.innerHTML += `
             <div class="bar-col">
                 <div class="bar-tooltip">${tooltip_html}</div>
@@ -284,49 +333,131 @@ function render_weekly_chart() {
     });
 }
 
-// --- Claude AI Summary ---
-async function fetch_ai_summary() {
+// ================================================
+// Key Insights (if/else sentence-based)
+// ================================================
+
+function generate_key_insights() {
     const weekly_data = load_weekly();
-    const days_keys = get_last_7_days();
-    let stats_text = 'Past 7 days productivity:\n';
-    let has_data = false;
+    const days_keys   = get_last_7_days();
+    const day_labels  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    let total_week_seconds = 0;
+    let active_days        = 0;
+    let best_day_seconds   = 0;
+    let best_day_label     = '';
+    const task_week_totals = [0, 0, 0, 0, 0, 0];
 
     days_keys.forEach(key => {
         const entry = weekly_data[key];
-        if (entry) {
-            has_data = true;
-            stats_text += `${key}: Total ${format_time_short(entry.face_seconds.reduce((a, b) => a + b, 0))}\n`;
+        if (!entry) return;
+        const day_total = entry.face_seconds.reduce((a, b) => a + b, 0);
+        if (day_total > 0) {
+            active_days++;
+            total_week_seconds += day_total;
+            if (day_total > best_day_seconds) {
+                best_day_seconds = day_total;
+                const d = new Date(key + 'T00:00:00');
+                best_day_label = day_labels[d.getDay()];
+            }
+            entry.face_seconds.forEach((sec, i) => { task_week_totals[i] += sec; });
         }
     });
 
-    if (!has_data) {
-        ai_summary_text.innerHTML = '<em>No weekly data yet.</em>';
-        ai_summary_box.style.display = 'block';
-        return;
+    const avg_day_seconds = active_days > 0 ? Math.round(total_week_seconds / active_days) : 0;
+    const today_entry     = weekly_data[TODAY_KEY];
+    const today_total     = today_entry ? today_entry.face_seconds.reduce((a, b) => a + b, 0) : 0;
+
+    let top_task_index = 0;
+    task_week_totals.forEach((sec, i) => { if (sec > task_week_totals[top_task_index]) top_task_index = i; });
+    const top_task_name = task_inputs[top_task_index]?.value || `Face ${top_task_index + 1}`;
+
+    const insights    = [];
+    const suggestions = [];
+
+    // ── Insight 1: Weekly activity ──
+    if (active_days === 0) {
+        insights.push("You haven't logged any productive time this week yet — today is a great day to start.");
+    } else if (active_days === 1) {
+        insights.push(`You've been productive on ${active_days} day this week. Building consistency across more days will compound your progress.`);
+    } else if (active_days <= 4) {
+        insights.push(`You've logged productive time on ${active_days} out of 7 days this week — a solid start.`);
+    } else {
+        insights.push(`You've been productive on ${active_days} out of 7 days this week — excellent consistency!`);
     }
 
-    ai_summary_text.innerHTML = '<em>⏳ Analysing...</em>';
-    ai_summary_box.style.display = 'block';
+    // ── Insight 2: Today vs average ──
+    if (today_total === 0) {
+        insights.push("No time has been tracked today yet.");
+    } else if (avg_day_seconds === 0 || today_total >= avg_day_seconds * 1.1) {
+        insights.push(`Today you've worked for ${format_time_short(today_total)}, which is above your weekly daily average — great effort.`);
+    } else if (today_total >= avg_day_seconds * 0.8) {
+        insights.push(`You've put in ${format_time_short(today_total)} today, close to your daily average of ${format_time_short(avg_day_seconds)}.`);
+    } else {
+        insights.push(`You've tracked ${format_time_short(today_total)} today, which is below your daily average of ${format_time_short(avg_day_seconds)} — there's still time to catch up.`);
+    }
 
-    try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'anthropic-dangerous-direct-browser-access': 'true'
-            },
-            body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 200,
-                messages: [{ role: 'user', content: stats_text + "\nSummarize my week briefly." }]
-            })
-        });
-        const data = await response.json();
-        ai_summary_text.textContent = data.content[0].text;
-    } catch(e) { ai_summary_text.textContent = 'Summary unavailable.'; }
+    // ── Insight 3: Best day ──
+    if (best_day_label) {
+        insights.push(`Your most productive day this week was ${best_day_label} with ${format_time_short(best_day_seconds)} logged.`);
+    }
+
+    // ── Insight 4: Top task ──
+    if (total_week_seconds > 0) {
+        const pct = Math.round((task_week_totals[top_task_index] / total_week_seconds) * 100);
+        insights.push(`Your most-worked task this week is <strong>${top_task_name}</strong>, accounting for ${pct}% of your total productive time.`);
+    }
+
+    // ── Insight 5: Weekly total vs target ──
+    if (total_week_seconds > 0) {
+        const target_week = 7 * 2 * 3600; // 14h
+        if (total_week_seconds >= target_week) {
+            insights.push(`You've hit ${format_time_short(total_week_seconds)} of productive time this week — you're having a strong week!`);
+        } else {
+            const remaining = format_time_short(target_week - total_week_seconds);
+            insights.push(`You've logged ${format_time_short(total_week_seconds)} this week. About ${remaining} more would reach a solid 14-hour weekly target.`);
+        }
+    }
+
+    // ── Suggestions ──
+    if (active_days < 5) {
+        suggestions.push("Try to log at least 5 active days a week — even 20 minutes on slow days builds the habit.");
+    }
+    if (avg_day_seconds < 3600 && active_days > 0) {
+        suggestions.push("Your average session is under an hour. Aiming for 1–2 focused hours per day will make a noticeable difference.");
+    }
+    if (total_week_seconds > 0) {
+        const other_tasks_total = task_week_totals.reduce((a, b) => a + b, 0) - task_week_totals[top_task_index];
+        if (other_tasks_total < task_week_totals[top_task_index] * 0.3) {
+            suggestions.push(`You're heavily focused on ${top_task_name}. Make sure other subjects are getting adequate attention too.`);
+        }
+    }
+    if (today_total > 4 * 3600) {
+        suggestions.push("You've logged over 4 hours today — remember to take regular breaks to avoid burnout.");
+    } else if (today_total === 0 && active_days > 0) {
+        suggestions.push("You haven't started today yet. Even a short session now will keep your momentum going.");
+    }
+    if (suggestions.length === 0) {
+        suggestions.push("Keep up the great work! Review your task balance weekly to stay on top of all subjects.");
+    }
+
+    // ── Render ──
+    let html = `<div style="margin-bottom:12px; font-size:15px; line-height:1.8; color:var(--subtext);">${insights.join(' ')}</div>`;
+    html += `<div style="margin-top:14px; padding-top:12px; border-top: 1px solid var(--border-color);">`;
+    html += `<div style="font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--subtext); margin-bottom:10px; font-weight:700;">Ways to Improve</div>`;
+    suggestions.forEach(s => {
+        html += `<div style="font-size:14px; color:var(--subtext); margin-bottom:8px; padding-left:12px; border-left:3px solid var(--dot-color); line-height:1.5;">💡 ${s}</div>`;
+    });
+    html += `</div>`;
+
+    ai_summary_text.innerHTML = html;
+    ai_summary_box.style.display = 'block';
 }
 
-// --- View Switching ---
+// ================================================
+// View Switching
+// ================================================
+
 view_stats_btn.addEventListener('click', () => {
     main_view.style.display = 'none';
     stats_view.style.display = 'flex';
@@ -342,7 +473,7 @@ view_detailed_btn.addEventListener('click', () => {
     stats_view.style.display = 'none';
     weekly_view.style.display = 'flex';
     render_weekly_chart();
-    fetch_ai_summary();
+    generate_key_insights();
 });
 
 back_from_weekly_btn.addEventListener('click', () => {
@@ -351,27 +482,25 @@ back_from_weekly_btn.addEventListener('click', () => {
     ai_summary_box.style.display = 'none';
 });
 
-// --- Serial Parsing Logic ---
+// ================================================
+// Serial Parsing
+// ================================================
+
 function parse_string(line) {
     if (!line) return;
-
     line = line.trim();
+    if (line === '') return;
 
-    if (line === "") {
-        console.log("Empty string received. Waiting...");
+    if (line === 'SYSTEM RESET') {
+        show_toast('✅ Hardware flash wiped successfully!');
         return;
     }
 
     const match = line.match(/^Side\s+(\d+)\s*\|\s*Time:\s*(\d+)s/i);
     if (match) {
-        const face = parseInt(match[1]);
-        let seconds = parseInt(match[2]);
-
-        if (seconds > Number.MAX_SAFE_INTEGER) {
-            console.log("Integer overflow warning");
-            seconds = Number.MAX_SAFE_INTEGER;
-        }
-
+        const face    = parseInt(match[1]);
+        let   seconds = parseInt(match[2]);
+        if (seconds > Number.MAX_SAFE_INTEGER) seconds = Number.MAX_SAFE_INTEGER;
         if (face !== last_face) {
             last_face = face;
             active_face = face;
@@ -383,15 +512,22 @@ function parse_string(line) {
     }
 }
 
-// --- Web Serial Connection ---
+// ================================================
+// Web Serial Connection
+// ================================================
+
 async function connect_serial() {
     try {
         set_connection_ui('connecting');
         serial_port = await navigator.serial.requestPort();
         await serial_port.open({ baudRate: 115200 });
-
         set_connection_ui('connected');
         show_toast('Connected!');
+
+        // Writer for sending commands to hardware
+        const encoder = new TextEncoderStream();
+        encoder.readable.pipeTo(serial_port.writable);
+        serial_writer = encoder.writable.getWriter();
 
         const decoder = new TextDecoderStream();
         serial_port.readable.pipeTo(decoder.writable);
@@ -400,7 +536,6 @@ async function connect_serial() {
         while (true) {
             const { value, done } = await serial_reader.read();
             if (done) break;
-
             if (value) {
                 receive_buffer += value;
                 let nl;
@@ -417,6 +552,36 @@ async function connect_serial() {
     }
 }
 
+// ================================================
+// Reset Hardware Button
+// ================================================
+
+reset_btn.addEventListener('click', async () => {
+    const confirmed = confirm(
+        '⚠️ Reset Hardware?\n\n' +
+        'This will permanently wipe ALL activity data from the cube\'s flash memory.\n\n' +
+        'Note: Your data saved on this device (local storage) is kept safe and will still be shown here.\n\n' +
+        'Proceed?'
+    );
+    if (!confirmed) return;
+
+    if (!serial_writer) {
+        show_toast('Connect the cube first before resetting hardware.');
+        return;
+    }
+
+    try {
+        await serial_writer.write('RESET\n');
+        show_toast('🔄 Reset command sent to hardware...');
+    } catch(e) {
+        show_toast('Failed to send reset: ' + e.message);
+    }
+});
+
+// ================================================
+// Connection UI State
+// ================================================
+
 function set_connection_ui(state) {
     if (state === 'connected') {
         status_dot.classList.add('connected');
@@ -432,8 +597,13 @@ function set_connection_ui(state) {
         connect_btn.textContent = 'Connect Cube';
         connect_btn.dataset.state = 'disconnected';
         connect_btn.disabled = false;
+        serial_writer = null;
     }
 }
+
+// ================================================
+// Settings Sidebar
+// ================================================
 
 const validate_task_inputs = () => {
     let all_filled = true;
@@ -459,20 +629,21 @@ over_lay.addEventListener('click', close_sidebar);
 
 save_tasks_btn.addEventListener('click', () => {
     update_face_display(active_face);
+    save_tasks_and_limits();
+    save_today();
     show_toast('Tasks saved!');
     close_sidebar();
-    save_today();
 });
 
 connect_btn.addEventListener('click', async () => {
-    if (!("serial" in navigator)) {
+    if (!('serial' in navigator)) {
         show_toast('Web Serial API is not supported in this browser. Try Chrome or Edge.');
         return;
     }
-
     if (connect_btn.dataset.state === 'connected') {
         stop_live_timer();
         if (serial_reader) await serial_reader.cancel();
+        try { if (serial_writer) serial_writer.close(); } catch(e) {}
         if (serial_port) await serial_port.close();
         set_connection_ui('disconnected');
     } else {
@@ -498,7 +669,26 @@ function show_toast(msg) {
     setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
-// --- Init ---
-update_face_display(active_face);
-timer_display.textContent = '00:00';
-update_daily_total_card();
+// ================================================
+// Init — restore all state from localStorage
+// ================================================
+
+(function init() {
+    // Restore dark mode preference
+    is_dark = load_dark_pref();
+    if (is_dark) {
+        document.body.classList.add('dark');
+        dark_toggle_btn.textContent = '☀️';
+    }
+
+    // Restore task names and per-face limits
+    load_tasks_and_limits();
+
+    // Restore today's tracked seconds
+    load_today_from_storage();
+
+    // Render initial state
+    update_face_display(active_face);
+    timer_display.textContent = '00:00';
+    update_daily_total_card();
+})();
