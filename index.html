@@ -30,7 +30,7 @@
             --neon-glow: var(--dot-color);
         }
 
-        
+        /* Neon: card borders softly glow in theme colour */
         body.dark .cards {
             border-color: var(--border-color);
             box-shadow: 0 0 0 1px var(--border-color),
@@ -38,7 +38,7 @@
                         0 4px 24px rgba(0,0,0,0.4);
         }
 
-        
+        /* Neon: header bottom edge */
         body.dark header {
             box-shadow: 0 2px 18px rgba(0,0,0,0.5),
                         0 1px 0 var(--border-color),
@@ -51,7 +51,7 @@
                         inset 0 0 10px color-mix(in srgb, var(--dot-color) 15%, transparent);
         }
 
-        
+        /* Neon: primary buttons */
         body.dark button:not(.closebtn):not(.dark-toggle):not(:disabled) {
             box-shadow: 0 0 10px -2px var(--dot-color);
         }
@@ -59,12 +59,12 @@
             box-shadow: 0 0 16px -1px var(--dot-color);
         }
 
-        
+        /* Neon: dark toggle ring */
         body.dark .dark-toggle {
             box-shadow: 0 0 8px -1px var(--dot-color);
         }
 
-        
+        /* Neon: connected status dot stronger pulse + glow */
         body.dark .statusdot.connected {
             box-shadow: 0 0 8px 2px var(--dot-color);
             animation: blink-neon 1.2s infinite;
@@ -74,29 +74,29 @@
             50%       { opacity: 0.25; box-shadow: none; }
         }
 
-        
+        /* Neon: sidebar glow on left edge */
         body.dark .sidebar.open {
             box-shadow: -2px 0 20px -4px var(--dot-color),
                         -4px 0 15px rgba(0,0,0,0.3);
         }
 
-        
+        /* Neon: input focus ring */
         body.dark .inputgroup input:focus,
         body.dark .face-selector-input:focus {
             box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot-color) 50%, transparent);
         }
 
-        
+        /* Neon: weekly bar today highlight */
         body.dark .bar-fill {
             filter: drop-shadow(0 0 4px var(--dot-color));
         }
 
-    
+        /* Neon: insights badge */
         body.dark .ai-badge {
             box-shadow: 0 0 8px -1px var(--dot-color);
         }
 
-        
+        /* Reset button — danger style */
         .reset-btn {
             background-color: #c62828;
             color: white;
@@ -108,12 +108,12 @@
         }
         body.dark .reset-btn:hover { background-color: #4e0000; }
 
-        
+        /* Neon: donut chart outer ring glow */
         body.dark .donut-chart {
             filter: drop-shadow(0 0 8px color-mix(in srgb, var(--dot-color) 50%, transparent));
         }
 
-        
+        /* Neon: weekly chart container */
         body.dark .weekly-chart-wrap,
         body.dark .ai-summary-box {
             border-color: var(--border-color);
@@ -154,7 +154,7 @@
             gap: 12px;
         }
 
-        
+        /* Dark mode toggle — top left */
         .dark-toggle {
             position: absolute;
             left: 32px;
@@ -253,7 +253,7 @@
             opacity: 0.7;
         }
 
-        
+        /* --- Daily Total Stat --- */
         .daily-stat-block {
             margin: 12px 0 20px;
         }
@@ -286,7 +286,7 @@
             color: var(--text-color);
         }
 
-        
+        /* --- Stats View --- */
         .stats-container-view {
             display: none;
             flex-direction: column;
@@ -331,7 +331,7 @@
             flex-shrink: 0;
         }
 
-        
+        /* --- Weekly View --- */
         .weekly-container-view {
             display: none;
             flex-direction: column;
@@ -424,7 +424,7 @@
             color: var(--meta-text);
         }
 
-        
+        /* --- AI Summary --- */
         .ai-summary-box {
             display: none;
             width: 100%;
@@ -457,7 +457,7 @@
             color: var(--subtext);
         }
 
-        
+        /* --- Sidebar --- */
         .sidebar {
             position: fixed;
             top: 0;
@@ -526,7 +526,7 @@
             color: var(--subtext);
         }
 
-        
+        /* Limit warning banner shown inside timer card */
         .limit-warning {
             display: none;
             margin-top: 10px;
@@ -573,6 +573,7 @@
         </div>
     </header>
 
+    <!-- Main Dashboard -->
     <div id="mainview" class="dashboardcontainer">
 
         <div class="cards">
@@ -591,7 +592,7 @@
             <div id="limitwarning" class="limit-warning">⏰ Time limit reached!</div>
         </div>
 
-        
+        <!-- Stats card with daily total -->
         <div class="cards" style="display: flex; flex-direction: column; justify-content: space-between;">
             <h3>Today's Stats</h3>
             <div class="daily-stat-block">
@@ -606,7 +607,7 @@
 
     </div>
 
-
+    <!-- Daily Donut Chart View -->
     <div id="statsview" class="stats-container-view">
         <div class="cards" style="width: 100%; max-width: 600px;">
             <h2 style="color: var(--text-color); margin-top: 0;">Daily Breakdown</h2>
@@ -627,7 +628,7 @@
         </div>
     </div>
 
-    
+    <!-- Weekly Bar Chart + AI Summary View -->
     <div id="weeklyview" class="weekly-container-view">
 
         <div class="weekly-chart-wrap">
